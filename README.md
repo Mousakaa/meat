@@ -21,3 +21,7 @@ vivado -source genx320_example.tcl
 ```
 
 This will open the Vivado GUI and create the design, after which simulation, synthesis and implementation runs can be launched.
+
+## Software driver
+
+This design can be used for a standalone Vitis application, using the official drivers from Metavision for the GenX320 camera, or with the PYNQ framework, in which case a custom driver for the camera can be found [here](https://gitlab.imt-atlantique.fr/a24gauda/genx320_pynq), along with an example application using the above `genx320_example` design.
