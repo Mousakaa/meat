@@ -163,9 +163,9 @@ begin
                         idx_next(i) <= idx(i) + 1;
                     end if;
                 when IDLE =>
-                    if i = (ram_cnt + 1) mod (N_SCALES + 1) then
+                    --if i = (ram_cnt + 1) mod (N_SCALES + 1) then
                         ready(i) <= '1';
-                    end if;
+                    --end if;
                     
                     if acc_valid = '1' then
                         state_next(i) <= PREREAD;
@@ -213,15 +213,15 @@ begin
                         end if;
                     else
                         -- Wait for last element
-                        if idx(i) = OUT_DATA_DEPTH - 1 then
-                            axis_ram_tlast(i) <= '1';
+                        --if idx(i) = OUT_DATA_DEPTH - 1 then
+                            --axis_ram_tlast(i) <= '1';
                             --ready(i) <= '1';
-                            state_next(i) <= IDLE;
-                        else
-                            idx_next(i) <= idx(i);
-                            ram_en_r(i) <= '1';
-                            ram_addr_r(i) <= std_logic_vector(to_unsigned(idx(i) * OUT_DATA_WIDTH / DATA_WIDTH, ram_addr_r(0)'length));
-                        end if;
+                            --state_next(i) <= IDLE;
+                        --else
+                        --end if;
+                        idx_next(i) <= idx(i);
+                        ram_en_r(i) <= '1';
+                        ram_addr_r(i) <= std_logic_vector(to_unsigned(idx(i) * OUT_DATA_WIDTH / DATA_WIDTH, ram_addr_r(0)'length));
                     end if;
                 when others =>
                     state_next(i) <= RESET;
@@ -278,6 +278,23 @@ begin
     end process;
     
     -- Accumulation waits for the next BRAM to be read and erased
-    acc_ready <= ready((ram_cnt + 1) mod (N_SCALES + 1));
+    process(clk)
+        variable ready_counter : std_logic_vector(0 to N_SCALES) := (others => '0');
+        constant FULL : std_logic_vector(0 to N_SCALES) := (others => '1');
+    begin
+        if rising_edge(clk) then
+            if rst_n = '0' then
+                acc_ready <= '0';
+                ready_counter := (others => '0');
+            else
+                acc_ready <= '0';
+                ready_counter := ready_counter or ready;
+                if ready_counter = FULL then
+                    acc_ready <= '1';
+                    ready_counter := (others => '0');
+                end if;
+            end if;
+        end if;
+    end process;
 
 end Behavioral;

@@ -38,7 +38,7 @@ architecture test of tb is
     constant INTRA_EVT_DELAY_CYCLES : integer := 2;
     constant CLK_PERIOD : time := 10 ns;
     constant N_OUTPUTS : integer := 5;
-    constant OUT_DATA_WIDTH : integer := 64;
+    constant OUT_DATA_WIDTH : integer := 8;
 
     component MEAT is
         generic (
@@ -228,11 +228,13 @@ begin
     process begin
         m_axis_tready <= (others => '0');
         
-        m_axis_tready <= (others => '1') after CLK_PERIOD;
+        wait for 8*CLK_PERIOD;
         
-        wait until false;
+        m_axis_tready <= (others => '1');
+        
+        --wait until false;
         --wait until m_axis_tlast = std_logic_vector(to_unsigned(2**N_OUTPUTS-1, N_OUTPUTS));
-        --wait for CLK_PERIOD;
+        wait for CLK_PERIOD;
     end process;
     
     process(clk)
