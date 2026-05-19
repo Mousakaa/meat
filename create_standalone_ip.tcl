@@ -1,11 +1,12 @@
 
 ################################################################
 # This is a generated script based on design: MEAT
-#
-# Though there are limitations about the generated script,
-# the main purpose of this utility is to make learning
-# IP Integrator Tcl commands easier.
 ################################################################
+
+# To test this script, run the following command from Vivado Tcl console:
+# 	source create_standalone_ip.tcl
+# Or start Vivado with :
+# 	vivado -source create_standalone_ip.tcl
 
 namespace eval _tcl {
 proc get_script_folder {} {
@@ -33,11 +34,6 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 ################################################################
 # START
 ################################################################
-
-# To test this script, run the following command from Vivado Tcl console:
-# 	source create_standalone_ip.tcl
-# Or start Vivado with :
-# 	vivado -source create_standalone_ip.tcl
 
 set list_projs [get_projects -quiet]
 if { $list_projs eq "" } {
