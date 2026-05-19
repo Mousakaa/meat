@@ -32,7 +32,7 @@ vivado -source s3_yolo_pipeline.tcl -tclargs ABSOLUTE/PATH/TO/FINN/OUTPUTS/stitc
 
 This will open the Vivado GUI and create the design, after which simulation, synthesis and implementation runs can be launched.
 
-The `s3_yolo_pipeline.tcl` script will generate a pipeline that allows to read both the accumulated event frames and the inference results, while the `s3_yolo_pipeline_inference_only.tcl` will only allow the inference results to be read without the attached frame (this design uses less memory resources, in case the FINN accelerator is too big).
+The `s3_yolo_pipeline.tcl` script will generate a pipeline that allows to read both the accumulated event frames and the inference results, while the `s3_yolo_pipeline_inference_only.tcl` will only allow the inference results to be read without the attached frame (this design can have higher throughput and uses less memory resources, in case the FINN accelerator is too big).
 
 ## Software Drivers
 
@@ -40,6 +40,6 @@ The `s3_yolo_pipeline.tcl` script will generate a pipeline that allows to read b
 
 This design can be used for a standalone Vitis application, using the official drivers from Metavision for the GenX320 camera, or with the PYNQ framework, in which case a custom driver for the camera can be found [here](https://gitlab.imt-atlantique.fr/a24gauda/genx320_pynq), along with an example application using the above `genx320_example` design.
 
-### S3-YOLO Pipeline
+### S3-YOLO Pipeline Driver
 
 For the S3-YOLO hardware implementations, a specialized driver relying on the GenX320 driver mentioned above can be found [here](LINK_TO_S3_YOLO_DRIVER).
