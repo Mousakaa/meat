@@ -42,4 +42,4 @@ This design can be used for a standalone Vitis application, using the official d
 
 ### S3-YOLO Pipeline Driver
 
-For the S3-YOLO hardware implementations, a specialized driver relying on the GenX320 driver mentioned above can be found [here](LINK_TO_S3_YOLO_DRIVER).
+For the S3-YOLO hardware implementations, a specialized driver relying on the GenX320 driver mentioned above can be found [here](https://gitlab.imt-atlantique.fr/a24gauda/s3_yolo_driver).
