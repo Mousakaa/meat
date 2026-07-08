@@ -67,6 +67,21 @@ architecture Behavioral of ram_array is
     constant DATA_DEPTH: integer := IMG_ROWS * IMG_COLS * 8 / DATA_WIDTH;
     constant OUT_DATA_DEPTH: integer := IMG_ROWS * IMG_COLS * 8 / OUT_DATA_WIDTH;
     
+    function repeat_byte(
+        b : std_logic_vector(7 downto 0);
+        n : natural
+    ) return std_logic_vector is
+        variable r : std_logic_vector(n*8-1 downto 0);
+    begin
+        for i in 0 to n-1 loop
+            r((i+1)*8-1 downto i*8) := b;
+        end loop;
+        return r;
+    end function;
+    
+    constant RAM_RESET_VALUE : std_logic_vector(DATA_WIDTH-1 downto 0) :=
+        repeat_byte(std_logic_vector(to_unsigned(127, 8)), DATA_WIDTH/8);
+    
     component xpm_ram is
         generic (
             ADDR_WIDTH: integer := 20;
@@ -125,7 +140,7 @@ begin
                 addra => ram_addr_w(i),
                 addrb => ram_addr_r(i),
                 dia => ram_di(i),
-                dib => (others => '0'),
+                dib => RAM_RESET_VALUE,
                 doa => ram_do_w(i),
                 dob => ram_do_r(i)
             );
@@ -252,7 +267,7 @@ begin
         ram_en_w <= (others => '0');
         ram_we <= (others => '0');
         ram_addr_w <= (others => (others => '0'));
-        ram_di <= (others => (others => '0'));
+        ram_di <= (others => RAM_RESET_VALUE);
         
         axis_ram_tready <= (others => '0');
         axis_tvalid <= (others => '0');

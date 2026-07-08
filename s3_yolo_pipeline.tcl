@@ -55,7 +55,7 @@ add_files -fileset sim_1 [glob ./src/sim/*.vhd]
 add_files -fileset constrs_1 ./src/constr/kv260_direct.xdc
 
 # Set all VHDL files to VHDL 2008 except for the one used in the BD
-set_property file_type {VHDL 2008} [get_files {base_counter.vhd evt_decoder.vhd MEAT.vhd MEAT_5_OUT.vhd memory.vhd ram_array.vhd typedef.vhd testbench.vhd}]
+set_property file_type {VHDL 2008} [get_files {base_counter.vhd evt_decoder.vhd MEAT.vhd MEAT_5_OUTS.vhd memory.vhd ram_array.vhd typedef.vhd testbench.vhd}]
 
 # Set testbench as top
 set_property top tb [get_filesets sim_1]

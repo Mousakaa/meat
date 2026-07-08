@@ -282,9 +282,9 @@ begin
                     end loop;
                     
                     if pol = '1' then
-                        ram_di(j_par*8 + 7 downto j_par*8) <= std_logic_vector(signed(ram_do(j_par*8 + 7 downto j_par*8)) + cnt);
+                        ram_di(j_par*8 + 7 downto j_par*8) <= std_logic_vector(unsigned(ram_do(j_par*8 + 7 downto j_par*8)) + cnt);
                     else
-                        ram_di(j_par*8 + 7 downto j_par*8) <= std_logic_vector(signed(ram_do(j_par*8 + 7 downto j_par*8)) - cnt);
+                        ram_di(j_par*8 + 7 downto j_par*8) <= std_logic_vector(unsigned(ram_do(j_par*8 + 7 downto j_par*8)) - cnt);
                     end if;
                 end loop;
                 
