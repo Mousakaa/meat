@@ -34,6 +34,12 @@ This will open the Vivado GUI and create the design, after which simulation, syn
 
 The `s3_yolo_pipeline.tcl` script will generate a pipeline that allows to read both the accumulated event frames and the inference results, while the `s3_yolo_pipeline_inference_only.tcl` will only allow the inference results to be read without the attached frame (this design can have higher throughput and uses less memory resources, in case the FINN accelerator is too big).
 
+The `s3_yolo_pipeline_color_convert.tcl` script is the same pipeline as `s3_yolo_pipeline.tcl`, with an added `color_convert` hardware module that recolors the accumulated event frame in the FPGA (instead of on the CPU) before it is read out, using the same invocation :
+
+```sh
+vivado -source s3_yolo_pipeline_color_convert.tcl -tclargs ABSOLUTE/PATH/TO/FINN/OUTPUTS/stitched_ip/ip
+```
+
 ## Software Drivers
 
 ### Camera Driver

@@ -1694,4 +1694,41 @@ update_compile_order -fileset sources_1
 make_wrapper [get_files ${design_name}.bd] -top -import
 set_property top ${design_name}_wrapper [current_fileset]
 
+# === FINN XDC crash workaround ===
+# Vivado 2022.2 crashes (SIGSEGV in readXDCForRefNameScoppedCells) when
+# resolving current_instance scoped constraints on the large FINN DCP.
+# Workaround: comment out current_instance lines and use a project-level
+# false-path override instead. See src/constr/finn_false_paths.xdc.
+puts "=== Applying FINN XDC crash workaround ==="
+set script_folder [_tcl::get_script_folder]
+set project_dir [get_property DIRECTORY [current_project]]
+set project_name [get_property NAME [current_project]]
+
+# Find the FINN XDC by constructing the expected path pattern
+set finn_xdc [lindex [glob -nocomplain [file join $project_dir "${project_name}.gen" "sources_1" "bd" * "ip" "*finn_design*" "impl" "finn_design.xdc"]] 0]
+
+if { $finn_xdc ne "" && [file exists $finn_xdc] } {
+  puts "=== Patching FINN XDC: $finn_xdc ==="
+  set fd [open $finn_xdc r]
+  set content [read $fd]
+  close $fd
+  # Comment out all current_instance lines
+  regsub -all -line {^current_instance} $content {#current_instance} content
+  set fd [open $finn_xdc w]
+  puts -nonewline $fd $content
+  close $fd
+  puts "=== FINN XDC patched: all current_instance lines commented out ==="
+} else {
+  puts "=== WARNING: finn_design.xdc not found (expected under $project_dir/${project_name}.gen/sources_1/bd/) ==="
+}
+
+# Add the project-level false-path override constraint
+set override_xdc [file join $script_folder "src" "constr" "finn_false_paths.xdc"]
+if { [file exists $override_xdc] } {
+  add_files -norecurse -fileset [get_filesets constrs_1] $override_xdc
+  puts "=== Added finn_false_paths.xdc to project constraints ==="
+} else {
+  puts "=== WARNING: finn_false_paths.xdc not found at $override_xdc ==="
+}
+
 }

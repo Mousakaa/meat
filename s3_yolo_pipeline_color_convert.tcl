@@ -4,7 +4,7 @@
 ################################################################
 
 # To test this script, start Vivado with :
-# 	vivado -source genx320_example.tcl -tclargs ABSOLUTE/PATH/TO/FINN/OUTPUT/stitched_ip/ip
+# 	vivado -source s3_yolo_pipeline_color_convert.tcl -tclargs ABSOLUTE/PATH/TO/FINN/OUTPUT/stitched_ip/ip
 
 namespace eval _tcl {
 proc get_script_folder {} {
@@ -45,7 +45,7 @@ if { $argc != 1 } {
 
 set list_projs [get_projects -quiet]
 if { $list_projs eq "" } {
-   create_project S3_YOLO_PIPELINE vivado_project -part xck26-sfvc784-2LV-c
+   create_project S3_YOLO_PIPELINE vivado_project_color_convert -part xck26-sfvc784-2LV-c
    set_property BOARD_PART xilinx.com:kv260_som:part0:1.4 [current_project]
 }
 
@@ -54,7 +54,9 @@ add_files [glob ./src/*.vhd]
 add_files -fileset sim_1 [glob ./src/sim/*.vhd]
 add_files -fileset constrs_1 ./src/constr/kv260_direct.xdc
 
-# Set all VHDL files to VHDL 2008 except for the one used in the BD
+# Set all VHDL files to VHDL 2008 except for the ones used in the BD
+# (color_convert.vhd and MEAT_5_OUTS_TOP.vhd are block-design top-level
+# entities and must stay non-VHDL-2008, see CLAUDE.md)
 set_property file_type {VHDL 2008} [get_files {base_counter.vhd evt_decoder.vhd MEAT.vhd MEAT_5_OUTS.vhd memory.vhd ram_array.vhd typedef.vhd testbench.vhd}]
 
 # Set testbench as top
@@ -182,6 +184,7 @@ set bCheckModules 1
 if { $bCheckModules == 1 } {
    set list_check_mods "\ 
 MEAT_5_OUTS_TOP\
+color_convert\
 AXISAddTLAST\
 AXISAddTLAST\
 "
@@ -463,7 +466,8 @@ proc create_root_design { parentCell } {
     CONFIG.c_include_sg {0} \
     CONFIG.c_micro_dma {0} \
     CONFIG.c_s2mm_burst_size {256} \
-    CONFIG.c_sg_length_width {17} \
+    CONFIG.c_s_axis_s2mm_tdata_width {32} \
+    CONFIG.c_sg_length_width {19} \
   ] $axi_dma_video_out
 
 
@@ -550,6 +554,17 @@ proc create_root_design { parentCell } {
   ] $clk_wiz_0
 
 
+  # Create instance: color_convert_0, and set properties
+  set block_name color_convert
+  set block_cell_name color_convert_0
+  if { [catch {set color_convert_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2095 -severity "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $color_convert_0 eq "" } {
+     catch {common::send_gid_msg -ssname BD::TCL -id 2096 -severity "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create instance: mipi_csi2_rx_subsyst_0, and set properties
   set mipi_csi2_rx_subsyst_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:mipi_csi2_rx_subsystem:5.2 mipi_csi2_rx_subsyst_0 ]
   set_property -dict [list \
@@ -590,7 +605,7 @@ proc create_root_design { parentCell } {
 
   # Create instance: ps8_0_axi_periph, and set properties
   set ps8_0_axi_periph [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 ps8_0_axi_periph ]
-  set_property CONFIG.NUM_MI {7} $ps8_0_axi_periph
+  set_property CONFIG.NUM_MI {8} $ps8_0_axi_periph
 
 
   # Create instance: rst_ps8_0_99M, and set properties
@@ -1656,11 +1671,12 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
   connect_bd_intf_net -intf_net axi_dma_video_out_M_AXI_S2MM [get_bd_intf_pins axi_dma_video_out/M_AXI_S2MM] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
   connect_bd_intf_net -intf_net axi_iic_0_IIC [get_bd_intf_ports IIC_1_0] [get_bd_intf_pins axi_iic/IIC]
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HPC0_FPD]
-  connect_bd_intf_net -intf_net axis_broadcaster_0_M00_AXIS [get_bd_intf_pins axis_broadcaster_0/M00_AXIS] [get_bd_intf_pins axis_fifo_out_first/S_AXIS]
+  connect_bd_intf_net -intf_net axis_broadcaster_0_M00_AXIS [get_bd_intf_pins axis_broadcaster_0/M00_AXIS] [get_bd_intf_pins color_convert_0/axis_in]
   connect_bd_intf_net -intf_net axis_broadcaster_0_M01_AXIS [get_bd_intf_pins S3YOLO/s_axis_0] [get_bd_intf_pins axis_broadcaster_0/M01_AXIS]
   connect_bd_intf_net -intf_net axis_fifo_out_first_M_AXIS [get_bd_intf_pins axis_fifo_out_first/M_AXIS] [get_bd_intf_pins axis_fifo_out_second/S_AXIS]
   connect_bd_intf_net -intf_net axis_fifo_out_second_M_AXIS [get_bd_intf_pins axi_dma_video_out/S_AXIS_S2MM] [get_bd_intf_pins axis_fifo_out_second/M_AXIS]
   connect_bd_intf_net -intf_net axis_out_fifo_1_M_AXIS [get_bd_intf_pins S3YOLO/axis_out_1] [get_bd_intf_pins axi_dma_out_1/S_AXIS_S2MM]
+  connect_bd_intf_net -intf_net color_convert_0_axis_out [get_bd_intf_pins axis_fifo_out_first/S_AXIS] [get_bd_intf_pins color_convert_0/axis_out]
   connect_bd_intf_net -intf_net mipi_csi2_rx_subsyst_0_video_out [get_bd_intf_pins MEAT_5_OUTS_TOP/s_axis] [get_bd_intf_pins mipi_csi2_rx_subsyst_0/video_out]
   connect_bd_intf_net -intf_net mipi_phy_if_0_1 [get_bd_intf_ports mipi_phy_if_0] [get_bd_intf_pins mipi_csi2_rx_subsyst_0/mipi_phy_if]
   connect_bd_intf_net -intf_net ps8_0_axi_periph_M00_AXI [get_bd_intf_pins axi_intc_0/s_axi] [get_bd_intf_pins ps8_0_axi_periph/M00_AXI]
@@ -1683,12 +1699,12 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
   connect_bd_net -net clk_wiz_0_clk_300MHz [get_bd_pins S3YOLO/clk_fast] [get_bd_pins clk_wiz_0/clk_fast] [get_bd_pins rst_ps8_0_fast/slowest_sync_clk]
   connect_bd_net -net rst_ps8_0_99M1_peripheral_aresetn [get_bd_pins S3YOLO/rst_n_fast] [get_bd_pins rst_ps8_0_fast/peripheral_aresetn]
   connect_bd_net -net rst_ps8_0_99M_interconnect_aresetn [get_bd_pins ps8_0_axi_periph/ARESETN] [get_bd_pins rst_ps8_0_99M/interconnect_aresetn]
-  connect_bd_net -net rst_ps8_0_99M_peripheral_aresetn [get_bd_pins MEAT_5_OUTS_TOP/rst_n] [get_bd_pins S3YOLO/rst_n_slow] [get_bd_pins axi_dma_out_0/axi_resetn] [get_bd_pins axi_dma_out_1/axi_resetn] [get_bd_pins axi_dma_video_out/axi_resetn] [get_bd_pins axi_gpio/s_axi_aresetn] [get_bd_pins axi_iic/s_axi_aresetn] [get_bd_pins axi_intc_0/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/S01_ARESETN] [get_bd_pins axi_interconnect_0/S02_ARESETN] [get_bd_pins axis_broadcaster_0/aresetn] [get_bd_pins axis_fifo_out_first/s_axis_aresetn] [get_bd_pins axis_fifo_out_second/s_axis_aresetn] [get_bd_pins mipi_csi2_rx_subsyst_0/lite_aresetn] [get_bd_pins mipi_csi2_rx_subsyst_0/video_aresetn] [get_bd_pins ps8_0_axi_periph/M00_ARESETN] [get_bd_pins ps8_0_axi_periph/M01_ARESETN] [get_bd_pins ps8_0_axi_periph/M02_ARESETN] [get_bd_pins ps8_0_axi_periph/M03_ARESETN] [get_bd_pins ps8_0_axi_periph/M04_ARESETN] [get_bd_pins ps8_0_axi_periph/M05_ARESETN] [get_bd_pins ps8_0_axi_periph/M06_ARESETN] [get_bd_pins ps8_0_axi_periph/S00_ARESETN] [get_bd_pins rst_ps8_0_99M/peripheral_aresetn]
+  connect_bd_net -net rst_ps8_0_99M_peripheral_aresetn [get_bd_pins MEAT_5_OUTS_TOP/rst_n] [get_bd_pins S3YOLO/rst_n_slow] [get_bd_pins axi_dma_out_0/axi_resetn] [get_bd_pins axi_dma_out_1/axi_resetn] [get_bd_pins axi_dma_video_out/axi_resetn] [get_bd_pins axi_gpio/s_axi_aresetn] [get_bd_pins axi_iic/s_axi_aresetn] [get_bd_pins axi_intc_0/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_0/S01_ARESETN] [get_bd_pins axi_interconnect_0/S02_ARESETN] [get_bd_pins axis_broadcaster_0/aresetn] [get_bd_pins axis_fifo_out_first/s_axis_aresetn] [get_bd_pins axis_fifo_out_second/s_axis_aresetn] [get_bd_pins color_convert_0/rst_n] [get_bd_pins mipi_csi2_rx_subsyst_0/lite_aresetn] [get_bd_pins mipi_csi2_rx_subsyst_0/video_aresetn] [get_bd_pins ps8_0_axi_periph/M00_ARESETN] [get_bd_pins ps8_0_axi_periph/M01_ARESETN] [get_bd_pins ps8_0_axi_periph/M02_ARESETN] [get_bd_pins ps8_0_axi_periph/M03_ARESETN] [get_bd_pins ps8_0_axi_periph/M04_ARESETN] [get_bd_pins ps8_0_axi_periph/M05_ARESETN] [get_bd_pins ps8_0_axi_periph/M06_ARESETN] [get_bd_pins ps8_0_axi_periph/M07_ARESETN] [get_bd_pins ps8_0_axi_periph/S00_ARESETN] [get_bd_pins rst_ps8_0_99M/peripheral_aresetn]
   connect_bd_net -net xlconcat_0_dout [get_bd_pins axi_intc_0/intr] [get_bd_pins xlconcat_0/dout]
   connect_bd_net -net xlconstant_0_dout [get_bd_ports psu_enable] [get_bd_pins xlconstant_0/dout]
   connect_bd_net -net xlslice_0_Dout [get_bd_ports fan_disable] [get_bd_pins xlslice_0/Dout]
   connect_bd_net -net zynq_ultra_ps_e_0_emio_ttc0_wave_o [get_bd_pins xlslice_0/Din] [get_bd_pins zynq_ultra_ps_e_0/emio_ttc0_wave_o]
-  connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins MEAT_5_OUTS_TOP/clk] [get_bd_pins S3YOLO/clk_slow] [get_bd_pins axi_dma_out_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_out_0/s_axi_lite_aclk] [get_bd_pins axi_dma_out_1/m_axi_s2mm_aclk] [get_bd_pins axi_dma_out_1/s_axi_lite_aclk] [get_bd_pins axi_dma_video_out/m_axi_s2mm_aclk] [get_bd_pins axi_dma_video_out/s_axi_lite_aclk] [get_bd_pins axi_gpio/s_axi_aclk] [get_bd_pins axi_iic/s_axi_aclk] [get_bd_pins axi_intc_0/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/S01_ACLK] [get_bd_pins axi_interconnect_0/S02_ACLK] [get_bd_pins axis_broadcaster_0/aclk] [get_bd_pins axis_fifo_out_first/s_axis_aclk] [get_bd_pins axis_fifo_out_second/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_in1] [get_bd_pins mipi_csi2_rx_subsyst_0/lite_aclk] [get_bd_pins mipi_csi2_rx_subsyst_0/video_aclk] [get_bd_pins ps8_0_axi_periph/ACLK] [get_bd_pins ps8_0_axi_periph/M00_ACLK] [get_bd_pins ps8_0_axi_periph/M01_ACLK] [get_bd_pins ps8_0_axi_periph/M02_ACLK] [get_bd_pins ps8_0_axi_periph/M03_ACLK] [get_bd_pins ps8_0_axi_periph/M04_ACLK] [get_bd_pins ps8_0_axi_periph/M05_ACLK] [get_bd_pins ps8_0_axi_periph/M06_ACLK] [get_bd_pins ps8_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps8_0_99M/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0] [get_bd_pins zynq_ultra_ps_e_0/saxihpc0_fpd_aclk]
+  connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins MEAT_5_OUTS_TOP/clk] [get_bd_pins S3YOLO/clk_slow] [get_bd_pins axi_dma_out_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_out_0/s_axi_lite_aclk] [get_bd_pins axi_dma_out_1/m_axi_s2mm_aclk] [get_bd_pins axi_dma_out_1/s_axi_lite_aclk] [get_bd_pins axi_dma_video_out/m_axi_s2mm_aclk] [get_bd_pins axi_dma_video_out/s_axi_lite_aclk] [get_bd_pins axi_gpio/s_axi_aclk] [get_bd_pins axi_iic/s_axi_aclk] [get_bd_pins axi_intc_0/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_0/S01_ACLK] [get_bd_pins axi_interconnect_0/S02_ACLK] [get_bd_pins axis_broadcaster_0/aclk] [get_bd_pins axis_fifo_out_first/s_axis_aclk] [get_bd_pins axis_fifo_out_second/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_in1] [get_bd_pins color_convert_0/clk] [get_bd_pins mipi_csi2_rx_subsyst_0/lite_aclk] [get_bd_pins mipi_csi2_rx_subsyst_0/video_aclk] [get_bd_pins ps8_0_axi_periph/ACLK] [get_bd_pins ps8_0_axi_periph/M00_ACLK] [get_bd_pins ps8_0_axi_periph/M01_ACLK] [get_bd_pins ps8_0_axi_periph/M02_ACLK] [get_bd_pins ps8_0_axi_periph/M03_ACLK] [get_bd_pins ps8_0_axi_periph/M04_ACLK] [get_bd_pins ps8_0_axi_periph/M05_ACLK] [get_bd_pins ps8_0_axi_periph/M06_ACLK] [get_bd_pins ps8_0_axi_periph/M07_ACLK] [get_bd_pins ps8_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps8_0_99M/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0] [get_bd_pins zynq_ultra_ps_e_0/saxihpc0_fpd_aclk]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_ps8_0_99M/ext_reset_in] [get_bd_pins rst_ps8_0_fast/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments
@@ -1709,17 +1725,14 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
   # Exclude Address Segments
   exclude_bd_addr_seg -offset 0x000800000000 -range 0x000100000000 -target_address_space [get_bd_addr_spaces axi_dma_out_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH]
   exclude_bd_addr_seg -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_dma_out_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_LPS_OCM]
-  exclude_bd_addr_seg -target_address_space [get_bd_addr_spaces axi_dma_out_1/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH]
+  exclude_bd_addr_seg -offset 0x000800000000 -range 0x000100000000 -target_address_space [get_bd_addr_spaces axi_dma_out_1/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH]
   exclude_bd_addr_seg -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_dma_out_1/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_LPS_OCM]
-  exclude_bd_addr_seg -target_address_space [get_bd_addr_spaces axi_dma_video_out/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH]
+  exclude_bd_addr_seg -offset 0x000800000000 -range 0x000100000000 -target_address_space [get_bd_addr_spaces axi_dma_video_out/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_DDR_HIGH]
   exclude_bd_addr_seg -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_dma_video_out/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP0/HPC0_LPS_OCM]
 
 
   # Restore current instance
   current_bd_instance $oldCurInst
-
-  regenerate_bd_layout
-  regenerate_bd_layout -routing
 
   validate_bd_design
   save_bd_design
@@ -1732,9 +1745,6 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
 ##################################################################
 
 create_root_design ""
-
-# Make top_wrapper and set it as top
-update_compile_order -fileset sources_1
 make_wrapper [get_files ${design_name}.bd] -top -import
 set_property top ${design_name}_wrapper [current_fileset]
 
