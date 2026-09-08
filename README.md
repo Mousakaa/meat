@@ -4,6 +4,8 @@ This project contains the hardware definition files for the event accumulation m
 
 ## Scripts
 
+All the TCL scripts are meant for use with **Vivado 2022.2**, because that is what the FINN pipeline uses.
+
 ### Create a Standalone MEAT IP
 
 The `create_standalone_ip.tcl` script generates the MEAT module for use in a separate Vivado project. It can be executed with the following command :
